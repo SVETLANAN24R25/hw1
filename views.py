@@ -1,46 +1,48 @@
-from django.shortcuts import render,redirect
-from django.urls import reverse
-from .models import Advertisment
-from .forms import AdvertismentForm
+from django.shortcuts import render, redirect,reverse
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login,logout
+from django.urls import reverse_lazy
+from .forms import ExtendedUserCreationForm
 
-def index(request):
-    advert=Advertisment.objects.all()
-    context={'advertisements':advert}
-    return render(request,'index.html',context)
+def login_view(request):
+    redirect_url=reverse('profile')
+    if request.method == 'GET':
+        if request.user.is_authenticated:
+            return redirect(redirect_url)
+        else:
+            return render(request, 'app_auths/login.html')
+        
+    username = request.POST('username')
+    password = request.POST('password')
+    user= authenticate(request,username=username, password=password)
+    if user is not None:
+        login(request,user)
+        return redirect(redirect_url)
+    return render( request, 'app_auth/login.html', {'error':'Пользователь не найден'})
 
-def top_sellers(request):
-    return render(request, 'top-sellers.html')
+@login_required(login_url=reverse_lazy('login'))
+def profile_view(request):
+    return render(request, 'app_auth/profile.html')
 
-def adv_post(request):
-    if request.method=='POST':
-        form=AdvertismentForm(request.POST,request.FILES)
+def logout_view(request):
+    logout(request)
+    return redirect(reverse('login'))
+
+def register_view(request):
+    if request.method == 'POST':
+        form=ExtendedUserCreationForm(request.POST)
         if form.is_valid():
-            new_adv=form.save(commit=False)
-            new_adv.user=request.user
-            new_adv.save()
-            url=reverse('main-page')
-            return redirect(url)
-    else:
-        form=AdvertismentForm()
+            user= form.save()
+            user=authenticate(username=user.username, password=request.POST['passwod1'])
+            login(request, user=user)
+            return redirect(reverse('profile'))
+        else:
+            form=ExtendedUserCreationForm()
 
-    context={'form':form}
-    return render(request,'advertisment-post.html',context)
-def reg(request):
-    return render(request,'register.html')
-    
-def log(request):
-    return render(request,'login.html')
+        context={
+            'form':form
+        }
 
-def pro(request):
-    return render(request,'profile.html')
+        return render(request, 'app_auths/register.html', context)
 
 
-    
-
-
-
-
-
-
-
-# Create your views here.
